@@ -525,7 +525,7 @@ s1.foo();
 
 * Aconstruct which adapts an existing interface X tp conform to the required interface Y.
 
-With no caching
+*With no caching*
 
 ```js
 class Point
@@ -633,7 +633,10 @@ drawPoints();
 
 
 
-With Caching
+*With Caching*
+
+* Sometimes the Adaptor pattern casues you to genrate temporary repeated objects as in above scenario. drawPoints calling two times genartes line objects in adaptor again.
+* So if you have already generated instance of objects you already encounter before, you should save keep them in a cache and then use it from the cache.
 
 ```js
 class Point
