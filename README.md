@@ -1046,14 +1046,518 @@ bft.getRange(16, 19).capitalize = true;
 console.log(bft.toString());
 ```
 
+### Chain of Responsibility
+
+* A chain of components who all get a chance to process a command or a query, optionally having default processing implementation and an ability to terminate the processing chain.
+
+**Method Chain**
+```js
+class Creature {
+  constructor(name, attack, defense) {
+    this.name = name;
+    this.attack = attack;
+    this.defense = defense;
+  }
+
+  toString() {
+    return `${this.name} (${this.attack}/${this.defense})`;
+  }
+}
+
+class CreatureModifier
+{
+  constructor(creature)
+  {
+    this.creature = creature;
+    this.next = null;
+  }
+
+  add(modifier)
+  {
+    if (this.next) this.next.add(modifier);
+    else this.next = modifier;
+  }
+
+  handle()
+  {
+    if (this.next) this.next.handle();
+  }
+}
+
+class NoBonusesModifier extends CreatureModifier
+{
+  constructor(creature)
+  {
+    super(creature);
+  }
+
+  handle()
+  {
+    console.log('No bonuses for you!');
+  }
+}
+
+class DoubleAttackModifier extends CreatureModifier
+{
+  constructor(creature)
+  {
+    super(creature);
+  }
+
+  handle()
+  {
+    console.log(`Doubling ${this.creature.name}'s attack`);
+    this.creature.attack *= 2;
+    super.handle();
+  }
+}
+
+class IncreaseDefenseModifier extends CreatureModifier
+{
+  constructor(creature)
+  {
+    super(creature);
+  }
+
+  handle() {
+    if (this.creature.attack <= 2)
+    {
+      console.log(`Increasing ${this.creature.name}'s defense`);
+      this.creature.defense++;
+    }
+    super.handle();
+  }
+}
+
+let goblin = new Creature('Goblin', 1, 1);
+console.log(goblin.toString());
+
+let root = new CreatureModifier(goblin);
+
+//root.add(new NoBonusesModifier(goblin));
+
+root.add(new DoubleAttackModifier(goblin));
+//root.add(new DoubleAttackModifier(goblin));
+
+root.add(new IncreaseDefenseModifier(goblin));
+
+// eventually...
+root.handle();
+console.log(goblin.toString());
+```
 
 
+**Event Broker Chain**
+
+```js
+class Event
+{
+  constructor()
+  {
+    this.handlers = new Map();
+    this.count = 0;
+  }
+
+  subscribe(handler)
+  {
+    this.handlers.set(++this.count, handler);
+    return this.count;
+  }
+
+  unsubscribe(idx)
+  {
+    this.handlers.delete(idx);
+  }
+
+  fire(sender, args)
+  {
+    this.handlers.forEach(function (v, k)
+    {
+      v(sender, args);
+    });
+  }
+}
+
+let WhatToQuery = Object.freeze({
+  'attack': 1,
+  'defense': 2
+});
+
+class Query
+{
+  constructor(creatureName, whatToQuery, value)
+  {
+    this.creatureName = creatureName;
+    this.whatToQuery = whatToQuery;
+    this.value = value;
+  }
+}
+
+class Game
+{
+  constructor()
+  {
+    this.queries = new Event();
+  }
+
+  performQuery(sender, query)
+  {
+    this.queries.fire(sender, query);
+  }
+}
+
+class Creature
+{
+  constructor(game, name, attack, defense)
+  {
+    this.game = game;
+    this.name = name;
+    this.initial_attack = attack;
+    this.initial_defense = defense;
+  }
+
+  get attack()
+  {
+    let q = new Query(this.name, WhatToQuery.attack,
+      this.initial_attack);
+    this.game.performQuery(this, q);
+    return q.value;
+  }
+
+  get defense()
+  {
+    let q = new Query(this.name, WhatToQuery.defense,
+      this.initial_defense);
+    this.game.performQuery(this, q);
+    return q.value;
+  }
+
+  toString()
+  {
+    return `${this.name}: (${this.attack}/${this.defense})`;
+  }
+}
+
+class CreatureModifier
+{
+  constructor(game, creature)
+  {
+    this.game = game;
+    this.creature = creature;
+    this.token = game.queries.subscribe(
+      this.handle.bind(this)
+    );
+  }
+
+  handle(sender, query)
+  {
+    // implement in inheritors
+  }
+
+  dispose()
+  {
+    game.queries.unsubscribe(this.token);
+  }
+}
+
+class DoubleAttackModifier extends CreatureModifier
+{
+  constructor(game, creature)
+  {
+    super(game, creature);
+  }
+
+  handle(sender, query) {
+    if (query.creatureName === this.creature.name &&
+        query.whatToQuery === WhatToQuery.attack)
+    {
+      query.value *= 2;
+    }
+  }
+}
+
+class IncreaseDefenseModifier extends CreatureModifier
+{
+  constructor(game, creature)
+  {
+    super(game, creature);
+  }
+
+  handle(sender, query)
+  {
+    if (query.creatureName === this.creature.name &&
+        query.whatToQuery === WhatToQuery.defense)
+    {
+      query.value += 2;
+    }
+  }
+}
+
+let game = new Game();
+let goblin = new Creature(game, 'Strong Goblin', 2, 2);
+console.log(goblin.toString());
+
+let dam = new DoubleAttackModifier(game, goblin);
+console.log(goblin.toString());
+
+let idm = new IncreaseDefenseModifier(game, goblin);
+console.log(goblin.toString());
+idm.dispose();
+
+dam.dispose();
+console.log(goblin.toString());
+```
 
 
+### Command
 
+* Uses: GUI Commands, multi-level undo/redo, macro recording etc
+* An object which represents an instruction to perform a particular action. Contains all the information necessary for the action to be taken.
 
+```js
+class BankAccount
+{
+  constructor(balance=0)
+  {
+    this.balance = balance;
+  }
 
+  deposit(amount)
+  {
+    this.balance += amount;
+    console.log(
+      `Deposited ${amount}, balance is now ${this.balance}`
+    );
+  }
 
+  withdraw(amount)
+  {
+    if (this.balance - amount >= BankAccount.overdraftLimit)
+    {
+      this.balance -= amount;
+      console.log(
+        `Withdrew ${amount}, balance is now ${this.balance}`
+      );
+      return true;
+    }
+    return false;
+  }
+
+  toString()
+  {
+    return `Balance: ${this.balance}`;
+  }
+}
+BankAccount.overdraftLimit = -500;
+
+let Action = Object.freeze({
+  'deposit': 1,
+  'withdraw': 2
+});
+
+class BankAccountCommand
+{
+  constructor(account, action, amount)
+  {
+    this.account = account;
+    this.action = action;
+    this.amount = amount;
+    this.succeeded = false;
+  }
+
+  call()
+  {
+    switch (this.action)
+    {
+      case Action.deposit:
+        this.account.deposit(this.amount);
+        this.succeeded = true;
+        break;
+      case Action.withdraw:
+        this.succeeded = this.account.withdraw(this.amount);
+        break;
+    }
+  }
+
+  undo()
+  {
+    if (!this.succeeded) return;
+    switch (this.action)
+    {
+      case Action.deposit:
+        this.account.withdraw(this.amount);
+        break;
+      case Action.withdraw:
+        this.account.deposit(this.amount);
+        break;
+    }
+  }
+}
+
+let ba = new BankAccount(100);
+
+let cmd = new BankAccountCommand(ba, Action.deposit, 50);
+cmd.call();
+console.log(ba.toString());
+
+console.log('Performing undo:');
+cmd.undo();
+console.log(ba.toString());
+```
+
+### Interpreter
+
+* A component that processes structured text data. Does so by turning it into separate lexical tokens(lexing) and then interpreting sequences of said tokens (paring).
+
+```js
+class Integer
+{
+  constructor(value)
+  {
+    this.value = value;
+  }
+}
+
+let Operation = Object.freeze({
+  addition: 0,
+  subtraction: 1
+});
+
+class BinaryOperation
+{
+  constructor()
+  {
+    this.type = null;
+    this.left = null;
+    this.right = null;
+  }
+
+  get value()
+  {
+    switch (this.type)
+    {
+      case Operation.addition:
+        return this.left.value + this.right.value;
+      case Operation.subtraction:
+        return this.left.value - this.right.value;
+    }
+    return 0;
+  }
+}
+
+let TokenType = Object.freeze({
+  integer: 0,
+  plus: 1,
+  minus: 2,
+  lparen: 3,
+  rparen: 4
+});
+
+class Token
+{
+  constructor(type, text)
+  {
+    this.type = type;
+    this.text = text;
+  }
+
+  toString()
+  {
+    return `\`${this.text}\``;
+  }
+}
+
+function lex(input)
+{
+  let result = [];
+
+  for (let i = 0; i < input.length; ++i)
+  {
+    switch (input[i])
+    {
+      case '+':
+        result.push(new Token(TokenType.plus, '+'));
+        break;
+      case '-':
+        result.push(new Token(TokenType.minus, '-'));
+        break;
+      case '(':
+        result.push(new Token(TokenType.lparen, '('));
+        break;
+      case ')':
+        result.push(new Token(TokenType.rparen, ')'));
+        break;
+      default:
+        let buffer = [input[i]];
+        for (let j = i+1; j < input.length; ++j)
+        {
+          if ('0123456789'.includes(input[j]))
+          {
+            buffer.push(input[j]);
+            ++i;
+          } else {
+            result.push(new Token(TokenType.integer,
+              buffer.join('')));
+            break;
+          }
+        }
+        break;
+    }
+  }
+
+  return result;
+}
+
+function parse(tokens)
+{
+  let result = new BinaryOperation();
+  let haveLHS = false;
+
+  for (let i = 0; i < tokens.length; ++i) {
+    let token = tokens[i];
+
+    switch (token.type) {
+      case TokenType.integer:
+        let integer = new Integer(parseInt(token.text));
+        if (!haveLHS) {
+          result.left = integer;
+          haveLHS = true;
+        } else {
+          result.right = integer;
+        }
+        break;
+      case TokenType.plus:
+        result.type = Operation.addition;
+        break;
+      case TokenType.minus:
+        result.type = Operation.subtraction;
+        break;
+      case TokenType.lparen:
+        let j = i;
+        for (; j < tokens.length; ++j)
+          if (tokens[j].type === TokenType.rparen)
+            break; // found it!
+        // process subexpression
+        let subexpression = tokens.slice(i + 1, j);
+        let element = parse(subexpression);
+        if (!haveLHS) {
+          result.left = element;
+          haveLHS = true;
+        } else result.right = element;
+        i = j; // advance
+        break;
+    }
+  }
+  return result;
+}
+
+let input = "(13+4)-(12+1)";
+let tokens = lex(input);
+console.log(tokens.join('  '));
+
+let parsed = parse(tokens);
+console.log(`${input} = ${parsed.value}`);
+```
 
 
 
