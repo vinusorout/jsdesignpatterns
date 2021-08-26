@@ -1559,6 +1559,169 @@ let parsed = parse(tokens);
 console.log(`${input} = ${parsed.value}`);
 ```
 
+### Mediator
+
+* A component that facilitates communication between other components without them necessarily being aware of each other or having direct (refrence) access to each other.
+* Eg chat room, people can leave and join a chat any time
+
+```js
+class Person
+{
+  constructor(name) {
+    this.name = name;
+    this.chatLog = [];
+  }
+
+  receive(sender, message)
+  {
+    let s = `${sender}: '${message}'`;
+    console.log(`[${this.name}'s chat session] ${s}`);
+    this.chatLog.push(s);
+  }
+
+  say(message) {
+    this.room.broadcast(this.name, message);
+  }
+
+  pm(who, message)
+  {
+    this.room.message(this.name, who, message);
+  }
+}
+
+class ChatRoom
+{
+  constructor()
+  {
+    this.people = [];
+  }
+
+  broadcast(source, message)
+  {
+    for (let p of this.people)
+      if (p.name !== source)
+        p.receive(source, message);
+  }
+
+  join(p)
+  {
+    let joinMsg = `${p.name} joins the chat`;
+    this.broadcast('room', joinMsg);
+    p.room = this;
+    this.people.push(p);
+  }
+
+  message(source, destination, message)
+  {
+    for (let p of this.people)
+      if (p.name === destination)
+        p.receive(source, message);
+  }
+}
+
+let room = new ChatRoom();
+
+let john = new Person('John');
+let jane = new Person('Jane');
+
+room.join(john);
+room.join(jane);
+
+john.say('hi room');
+jane.say('oh, hey john');
+
+let simon = new Person('Simon');
+room.join(simon);
+simon.say('hi everyone!');
+
+jane.pm('Simon', 'glad you could join us!');
+```
+
+### Memento
+
+* Simillar like command but here we save the full state of system/object.
+* Undo/Redo
+
+```js
+class Memento
+{
+  constructor(balance)
+  {
+    this.balance = balance;
+  }
+}
+
+class BankAccount
+{
+  constructor(balance = 0) {
+    this.balance = balance;
+    this.changes = [new Memento(balance)];
+    this.current = 0;
+  }
+
+  deposit(amount)
+  {
+    this.balance += amount;
+    let m = new Memento(this.balance);
+    this.changes.push(m);
+    this.current++;
+    return m;
+  }
+
+  restore(m)
+  {
+    if (m)
+    {
+      this.balance = m.balance;
+      this.changes.push(m);
+      this.current = this.changes.count - 1;
+    }
+  }
+
+  undo()
+  {
+    if (this.current > 0)
+    {
+      let m = this.changes[--this.current];
+      this.balance = m.balance;
+      return m;
+    }
+    return null;
+  }
+
+  redo()
+  {
+    if (this.current+1 < this.changes.length)
+    {
+      let m = this.changes[++this.current];
+      this.balance = m.balance;
+      return m;
+    }
+    return null;
+  }
+
+  toString()
+  {
+    return `Balance: $${this.balance}`;
+  }
+}
+
+let ba = new BankAccount(100);
+ba.deposit(50);
+ba.deposit(25);
+console.log(ba.toString());
+
+ba.undo();
+console.log(`Undo 1: ${ba.toString()}`);
+ba.undo();
+console.log(`Undo 2: ${ba.toString()}`);
+ba.redo();
+console.log(`Redo 2: ${ba.toString()}`);
+```
+
+
+
+
 
 
 
