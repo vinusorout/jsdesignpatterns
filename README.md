@@ -1719,7 +1719,185 @@ ba.redo();
 console.log(`Redo 2: ${ba.toString()}`);
 ```
 
+### Observer
 
+* We need to be informed when certain things happen
+* We want to listen to the events and to be notified when they occur.
+
+### Strategy
+
+* Enables the exact behaviour of a system to be selected at run time.
+  * High level algo uses an interface
+  * Concrete implementations implement the interface
+
+```js
+let OutputFormat = Object.freeze({
+  markdown: 0,
+  html: 1
+});
+
+class ListStrategy
+{
+  start(buffer) {}
+  end(buffer) {}
+  addListItem(buffer, item) {}
+}
+
+class MarkdownListStrategy extends ListStrategy
+{
+  addListItem(buffer, item) {
+    buffer.push(` * ${item}`);
+  }
+}
+
+class HtmlListStrategy extends ListStrategy
+{
+  start(buffer) {
+    buffer.push('<ul>');
+  }
+
+  end(buffer)
+  {
+    buffer.push('</ul>');
+  }
+
+  addListItem(buffer, item) {
+    buffer.push(`  <li>${item}</li>`)
+  }
+}
+
+class TextProcessor
+{
+  constructor(outputFormat)
+  {
+    this.buffer = [];
+    this.setOutputFormat(outputFormat);
+  }
+
+  setOutputFormat(format)
+  {
+    switch (format)
+    {
+      case OutputFormat.markdown:
+        this.listStrategy = new MarkdownListStrategy();
+        break;
+      case OutputFormat.html:
+        this.listStrategy = new HtmlListStrategy();
+        break;
+    }
+  }
+
+  appendList(items)
+  {
+    this.listStrategy.start(this.buffer);
+    for (let item of items)
+      this.listStrategy.addListItem(this.buffer, item);
+    this.listStrategy.end(this.buffer);
+  }
+
+  clear()
+  {
+    this.buffer = [];
+  }
+
+  toString()
+  {
+    return this.buffer.join('\n');
+  }
+}
+
+let tp = new TextProcessor();
+tp.setOutputFormat(OutputFormat.markdown);
+tp.appendList(['foo', 'bar', 'baz']);
+console.log(tp.toString());
+
+tp.clear();
+tp.setOutputFormat(OutputFormat.html);
+tp.appendList(['alpha', 'beta', 'gamma']);
+console.log(tp.toString());
+```
+
+### Template Method
+
+* Allows us to define the skeleton of algorithm, with concrete implementations defined in subclasses.
+* Simillar to startegy
+* Algo can be decomposed into common parts + specifics
+* Strategy pattern do this using composition
+  * High level algo uses an interface
+  * Concrete implementations implement the interface
+* Template Method does the same thing through inheritance
+  * Overall algo makes use of empty ("abstract") members
+  * Inheritors override these members
+  * Parent template method invoked
+
+```js
+class Game {
+  constructor(numberOfPlayers)
+  {
+    this.numberOfPlayers = numberOfPlayers;
+    this.currentPlayer = 0;
+  }
+
+  run() {
+    this.start();
+    while (!this.haveWinner) {
+      this.takeTurn();
+    }
+    console.log(`Player ${this.winningPlayer} wins.`);
+  }
+
+  start(){}
+  get haveWinner(){}
+  takeTurn(){}
+  get winningPlayer(){}
+}
+
+class Chess extends Game
+{
+  constructor()
+  {
+    super(2);
+    this.maxTurns = 10;
+    this.turn = 1;
+  }
+
+  start()
+  {
+    console.log(
+      `Starting a game of chess with ${this.numberOfPlayers} players.`
+    );
+  }
+
+  get haveWinner()
+  {
+    return this.turn === this.maxTurns;
+  }
+
+  takeTurn() {
+    console.log(
+      `Turn ${this.turn++} taken by player ${this.currentPlayer}.`
+    );
+    this.currentPlayer = (this.currentPlayer + 1) % this.numberOfPlayers;
+  }
+
+  get winningPlayer()
+  {
+    return this.currentPlayer;
+  }
+}
+
+let chess = new Chess();
+chess.run();
+```
+
+### Visitor
+
+* A component(vistor) that knows how to traverse a data structure composed of (possible related) types.
+* Need to define a new operation on an entire class hierarchy
+  * Eg make a doc model printable to HTML/Markdown
+* We do not want to keep modifying every class in the hierarchy
+* Create an external component to handle rendering.
+  * But avoid explicit type checks
 
 
 
