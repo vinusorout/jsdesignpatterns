@@ -521,7 +521,7 @@ console.log('Are they identical? ' + (s1 === s2));
 s1.foo();
 ```
 
-### Adapter
+### Adapter (structural)
 
 * Aconstruct which adapts an existing interface X tp conform to the required interface Y.
 
@@ -771,7 +771,7 @@ draw();
 draw();
 ```
 
-### Bridge
+### Bridge (structural)
 
 * Decouple abstraction from implementation
 * A mechanism that decouples an interface(hierarchy) from an implementation(hierarchy).
@@ -834,7 +834,7 @@ circle.resize(2);
 circle.draw();
 ```
 
-### Decorator
+### Decorator (structural)
 
 * Want to augment an object with additional functionality
 * DO not want to rewrite or alter existing code (OCP)
@@ -934,7 +934,7 @@ console.log(redHalfCircle.toString());
 ```
 
 
-### Facade
+### Facade (structural)
 
 * Provides a simple, easy to understand/user interface over a large and sophisticated body of code.
 * Balancing complexity and presentation/usability
@@ -946,7 +946,7 @@ console.log(redHalfCircle.toString());
   * Many systems working to provide flexibility, but...
   * API consumers want it to 'just work'
 
-### Flyweight
+### Flyweight (structural)
 
 * A space optimization technique that lets us use less memory by storing externally the data associated with similar objects.
 * Avoid redundancy when storing data
@@ -1046,7 +1046,7 @@ bft.getRange(16, 19).capitalize = true;
 console.log(bft.toString());
 ```
 
-### Chain of Responsibility
+### Chain of Responsibility (behavioral)
 
 * A chain of components who all get a chance to process a command or a query, optionally having default processing implementation and an ability to terminate the processing chain.
 
@@ -1309,7 +1309,7 @@ console.log(goblin.toString());
 ```
 
 
-### Command
+### Command (behavioral)
 
 * Uses: GUI Commands, multi-level undo/redo, macro recording etc
 * An object which represents an instruction to perform a particular action. Contains all the information necessary for the action to be taken.
@@ -1405,7 +1405,7 @@ cmd.undo();
 console.log(ba.toString());
 ```
 
-### Interpreter
+### Interpreter (behavioral)
 
 * A component that processes structured text data. Does so by turning it into separate lexical tokens(lexing) and then interpreting sequences of said tokens (paring).
 
@@ -1559,7 +1559,7 @@ let parsed = parse(tokens);
 console.log(`${input} = ${parsed.value}`);
 ```
 
-### Mediator
+### Mediator (behavioral)
 
 * A component that facilitates communication between other components without them necessarily being aware of each other or having direct (refrence) access to each other.
 * Eg chat room, people can leave and join a chat any time
@@ -1637,7 +1637,7 @@ simon.say('hi everyone!');
 jane.pm('Simon', 'glad you could join us!');
 ```
 
-### Memento
+### Memento (behavioral)
 
 * Simillar like command but here we save the full state of system/object.
 * Undo/Redo
@@ -1719,12 +1719,12 @@ ba.redo();
 console.log(`Redo 2: ${ba.toString()}`);
 ```
 
-### Observer
+### Observer (behavioral)
 
 * We need to be informed when certain things happen
 * We want to listen to the events and to be notified when they occur.
 
-### Strategy
+### Strategy (behavioral)
 
 * Enables the exact behaviour of a system to be selected at run time.
   * High level algo uses an interface
@@ -1817,7 +1817,7 @@ tp.appendList(['alpha', 'beta', 'gamma']);
 console.log(tp.toString());
 ```
 
-### Template Method
+### Template Method (behavioral)
 
 * Allows us to define the skeleton of algorithm, with concrete implementations defined in subclasses.
 * Simillar to startegy
@@ -1890,7 +1890,7 @@ let chess = new Chess();
 chess.run();
 ```
 
-### Visitor
+### Visitor (behavioral)
 
 * A component(vistor) that knows how to traverse a data structure composed of (possible related) types.
 * Need to define a new operation on an entire class hierarchy
@@ -1898,6 +1898,114 @@ chess.run();
 * We do not want to keep modifying every class in the hierarchy
 * Create an external component to handle rendering.
   * But avoid explicit type checks
+
+### Intrusive Visitor
+
+* You actually change the existing classes
+* Like in below example we are providing buffer object for printing to each class
+* This is a violation to open close principle, that can be solved by Reflective Vistor
+
+```js
+class NumberExpression
+{
+  constructor(value)
+  {
+    this.value = value;
+  }
+
+  print(buffer)
+  {
+    buffer.push(this.value.toString());
+  }
+}
+
+class AdditionExpression
+{
+  constructor(left, right)
+  {
+    this.left = left;
+    this.right = right;
+  }
+
+  print(buffer)
+  {
+    buffer.push('(');
+    this.left.print(buffer);
+    buffer.push('+');
+    this.right.print(buffer);
+    buffer.push(')');
+  }
+}
+
+// 1 + (2+3)
+let e = new AdditionExpression(
+  new NumberExpression(1),
+  new AdditionExpression(
+    new NumberExpression(2),
+    new NumberExpression(3)
+  )
+);
+let buffer = [];
+e.print(buffer);
+console.log(buffer.join(''));
+```
+
+### Reflective Vistor
+
+
+```js
+class NumberExpression
+{
+  constructor(value)
+  {
+    this.value = value;
+  }
+}
+
+class AdditionExpression
+{
+  constructor(left, right)
+  {
+    this.left = left;
+    this.right = right;
+  }
+}
+
+class ExpressionPrinter
+{
+  print(e, buffer)
+  {
+    if (e instanceof NumberExpression)
+    {
+      buffer.push(e.value);
+    }
+    else if (e instanceof AdditionExpression)
+    {
+      buffer.push('(');
+      this.print(e.left, buffer);
+      buffer.push('+');
+      this.print(e.right, buffer);
+      buffer.push(')');
+    }
+  }
+}
+
+let e = new AdditionExpression(
+  new NumberExpression(1),
+  new AdditionExpression(
+    new NumberExpression(2),
+    new NumberExpression(3)
+  )
+);
+let buffer = [];
+let ep = new ExpressionPrinter();
+ep.print(e, buffer);
+console.log(buffer.join(''));
+```
+
+
+
+
 
 
 
